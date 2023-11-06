@@ -9,7 +9,9 @@
 date()
 
 ```
-## Initial Thoughts
+### Initial Thoughts
 I have some experience with R and other languages like Python.  I find that the most challenging aspect is getting used to the logic of how RStudio and Git interact (i.e. <mark>getting the changes sent to my repository and getting the diary to update<mark>)
 
-Feeling a little over my head but still interested in trying to learn.
+I went over exercise 1 briefly and it was overwhelming the length of it, I am not sure if we were expected to go over it all (*but if we are, then I don't think I will be able to keep up*).  
+
+Nevertheless, I am still up for the challenge and will just try and absorb as much as I can.
