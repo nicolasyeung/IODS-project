@@ -9,4 +9,7 @@
 date()
 
 ```
-Up so floating many belts down.
+## Initial Thoughts
+I have some experience with R and other languages like Python.  I find that the most challenging aspect is getting used to the logic of how RStudio and Git interact (i.e. <mark>getting the changes sent to my repository and getting the diary to update<mark>)
+
+Feeling a little over my head but still interested in trying to learn.

@@ -1,7 +1,8 @@
 ---
 title: "IODS course project"
+author: "Nicolas Yeung"
 output:
-  html_document:
+html_document:
     theme: cosmo
     toc: true
     toc_depth: 2
