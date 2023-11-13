@@ -1,13 +1,64 @@
-# Insert chapter 2 title here
+# Regression and model validation
 
-*Describe the work you have done this week and summarize your learning.*
-
-- Describe your work and results clearly. 
-- Assume the reader has an introductory course level understanding of writing and reading R code as well as statistical methods.
-- Assume the reader has no previous knowledge of your data or the more advanced methods you are using.
+This week I learning quite a bit about data wrangling and performing some basic linear regression
 
 ```{r}
 date()
 ```
+### Creating an enviroment with needed packages
+```{r}
+library(tidyverse)
+library(GGally)
+```
+### Reading the data in and checking its structure
+```{r}
+students2014 <- read.csv("C:/Users/nicol/Downloads/PHD_302/IODS-project/learning2014.csv")
+str(students2014)
+```
+### Creating a graphical overview of the data
+```{r}
+ggpairs(students2014, columns = 3:8)
+```
 
-Here we go again...
+
+
+
+#### Here I can see that most of the scores are normally distributed and with no real correlations that I can see
+
+
+### Selecting variables to test a regression model
+
+```{r}
+first_model <- lm(formula= Points ~ attitude + deep  + Age  + surf + stra, data=students2014)
+summary(first_model)
+```
+
+
+#### I honestly do not know enough about statistics to be able to say anything meaningful from this model.  I think that attitude seems to have the biggest impact on points while Age seems to have no effect, so I iwll remove it and see the what happens.
+
+
+```{r}
+second_model <- lm(formula= Points ~ attitude + deep  + surf + stra, data=students2014)
+summary(second_model)
+```
+
+
+#### Here it seems that the impact of attitude increased when I took out Age, and the Multiple R squared went down.  My understanding of statistics is limited, but if the multiple R squared value went down (which ranges between 0 and 1, with 1 being a perfect correlation) the fact that it went down indicates the model fit better with Age included.
+
+
+### Creating Diagnostic Plots
+
+```{r}
+plot(first_model, which = 1, caption = "Residuals vs Fitted")
+plot(first_model, which = 2)
+plot(first_model, which = 5)
+```
+
+
+#### *From the online textbook I see that linear regresssion models have 4 assumptions: Linear relationship between predictor variables and outcome, independence of variables, normal distribution of variables and equals variance of variables.
+
+#### **Looking at the Residuals vs Fitted plot it looks like Points are fairly evenly distributed along their axis which indidcates that the models assumptions are valid
+
+#### ***The Q-Q plot also seems to show a normal distriubution in residuals which is also a good check of the model
+
+#### ****The leverage plot seems to show that not many residuals have a large impact on Points.  There are a few outliers that might merit removal.
