@@ -1,0 +1,135 @@
+# Logistic Regression
+
+### Preparing environment
+```{r}
+library(tidyverse)
+library(dplyr)
+library(ggplot2)
+```
+
+### Assignment task 2 - reading the csv file I wrangled
+```{r}
+alc <- read.csv("C:/Users/nicol/Downloads/PHD_302/IODS-project/data/Assignement3_Logistic_Regression/alc.csv")
+```
+
+### Assignment task 3 - creating hypotheses
+
+#### I think that alcohol consumption with correlate in the following ways: 
+##### 1)  famrel, if the family relationship is higher alc_use will be lower
+##### 2)  goout will correlate with alc_use, more time for going out more time for alcohol consumption
+##### 3)  failures will correlate with alc_use, one reason for poor academic performance could be higher alcohol consumption
+##### 4)  higher variable no will correlate with higher alcohol consumption
+
+### Assignment task 4 - Exlporing the data
+```{r}
+g1 <- ggplot(data = alc, aes(x = high_use, y = famrel))
+g1 + geom_boxplot() + ylab("famrel")
+```
+####Interesting, there seems to be a trend here that higher familial relationships do correlate with less alcohol consumption but it seems weak.  My prediction is that if I use famrel as a variable in my logistic regression it will not give a strong Rsquared value.
+
+```{r}
+g2 <- ggplot(data = alc, aes(x = high_use, y = goout))
+g2 + geom_boxplot() + ylab("goout")
+```
+####Here I see my guess of people going out more also drinking more to be true.  I feel this is slighlty stonger than famrel, by eye.  I would think this would correlate with alcohol high use true.
+
+```{r}
+ggplot(data=alc, aes(x=factor(failures),y=alc_use))+
+  geom_boxplot()+
+  geom_hline(yintercept = 2, linetype="dashed", colour="red")
+```
+
+####Just looking at the distribution of failures vs alc_use above two, we see that all the people who failed a course also fall into the high_use true condition.
+
+```{r}
+g3 <- ggplot(data = alc, aes(x = high_use, y = higher))
+g3 + geom_count(aes(high_use, higher, alpha = 0.7, colour = higher))
+```
+####Here I had a hard time finding a plot that would show me the comparison I wanted.  It is one of my learning pains in dealing with data visualization, finding the right plot type.  But here I can see that of the people who don't have higher education aspirations there isn't much of a difference in high_use.  But of those who do (who also make up the majority of the students), there are more students who want to go to higher eduction who don't fall into high_use than do, which corresponds to my guess but perhaps not strongily.
+
+
+```{r}
+g4 <- ggplot(data = alc, aes(x = higher, y = G3))
+g4 + geom_boxplot() + ylab("G3")
+```
+####was interested to see if the ambition for higher education also correlated with grades, it seems to.  Intresting
+
+
+### Assignment task 5 - logistic regression
+
+```{r}
+m <- glm(high_use ~ famrel + failures + goout + higher, data = alc, family = "binomial")
+summary(m)
+```
+
+
+```{r}
+coef(m)
+```
+
+##### Here I can see that goout correlates the most with high_use, followed by: famrel and failures.  Higheryes does correlate with less alcohol use but not so strongly (z= 0.3897)
+
+```{r}
+OR <- coef(m) %>% exp
+OR
+```
+
+##### The odds ratios here help me see the impact of goout, I was confused seeing a value of 0.7576, but I forgot I was looking at a logistic regression.  The value of the odds ratio of 2.13 makes more sense for the high z score, for those in high_use they are 110% more likely to goout more frequently.
+
+```{r}
+CI <-  confint(m) %>% exp
+CI
+```
+
+##### My knowlege of statistics is lacking but I would say that the CI for each of my selected variables is acceptable as more of the data falls within 2.5 and 97.5.
+
+### Assignemnt task 6 - Predictive power of my model
+
+```{r}
+m <- glm(high_use ~ famrel + failures + goout, data = alc, family = "binomial")
+alc <- mutate(alc, probability = predict(m, type = "response"))
+alc <- mutate(alc, prediction = probability > 0.5)
+colnames(alc)
+```
+
+```{r}
+table(high_use = alc$high_use, prediction = alc$prediction)
+```
+##### here I can see that my model have 238 true negatives (false-false), it had 36 true positives (true-true).  It had 75 false negatives (false-true, high_use was false but prediction was true) and 21 false-negatives (true-false, the inverse.)
+
+```{r}
+ggplot(alc, aes(x = probability, y = high_use, col = prediction))+
+  geom_point()
+```
+#### taking a look at the data visually.
+
+```{r}
+loss_func <- function(class, prob) {
+  n_wrong <- abs(class - prob) > 0.5
+  mean(n_wrong)
+}
+loss_func(class = alc$high_use, prob = alc$probability)
+```
+##### Here I see that the average number of wrong predictions in my model is ~26%
+
+
+```{r}
+library(boot)
+
+#setting up the training data from my model
+cv_train <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = nrow(alc))
+
+#subselecting a pool of test data
+cv_test <- cv.glm(data = alc, cost = loss_func, glmfit = m, K = 10)
+
+
+cv_train$delta[1]
+```
+```{r}
+cv_test$delta[1]
+```
+##### Here I see that my model had and error rate of about ~25,9% and the testing data had and error of ~27,6%, therefore my model is slightly better than guessing.
+
+
+
+
