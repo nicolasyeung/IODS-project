@@ -1,0 +1,126 @@
+## Dimensionality reduction techniques
+
+### Preparing environment
+```{r}
+date()
+library(tidyr)
+library(dplyr)
+library(corrplot)
+library(GGally)
+library(tibble)
+library(ggplot2)
+library(FactoMineR)
+```
+
+### Reading in data
+```{r}
+human <- read.csv("C:/Users/nicol/Downloads/PHD_302/IODS-project/data/human.csv")
+```
+
+### Taske 1 - Moving the country to rownames
+
+```{r}
+human_ <- column_to_rownames(human, "Country")
+
+ggpairs(human_[-1] , 
+        lower = list(continuous = wrap("points", color = "turquoise", alpha = 0.5), 
+                     combo = wrap("box", color = "orange", alpha = 0.3), 
+                     discrete = wrap("facetbar", color = "yellow", alpha = 0.3) ), 
+        diag = list(continuous = wrap("densityDiag",  color = "red", alpha = 0.5) ))
+```
+
+#### There are quite a number of pairwaise correlations that seem quit strong.  GNI, Mat.Mor and Ado.Birth seem to skew to the right.  I would guess that they would also correlate with one another quite strongly.
+
+
+```{r}
+corrplot(cor(human_[-1]))
+```
+
+#### Here I can see that both Mat.Mor and Ado.Birth correlate positively while also having Mat.Mor and Life.Exp correlating negatively.  This makes sense as the younger the person giving birth, the higher the mortaility and the lower the life expectancy.  
+
+
+#### Expected years of schooling (Edu.Exp) correlates positively with Edu2.FM, Life.Exp and somewhat to GNI.  This to me makes sense as you would expect that the better to educational opportunity and availablity the better the other life paramaters would be.
+
+
+#### Edu2.FM seems to correlate negatively with Mat.Mor and Ado.Birth.  Which would indicate that the lower the educational level of the females the more likely they are to give birth young and succumb to maternal mortality.
+
+
+### Task 3 - PCA of non-standardized data
+
+```{r}
+pca_human <- prcomp(human_[-1])
+
+s <- summary(pca_human)
+round(1*s$importance[2, ], digits = 2)
+
+biplot(pca_human, choices = 1:2)
+
+```
+#### Here it seems we have GNI responsible for nearly 100% of the variation, seems to good to be true as well as incorrect.  It is a good reminder to myself that scale matters, and now we will standardize the variables.
+
+
+### PCA on standardized data
+
+```{r}
+pca_human_sc <- prcomp(scale(human_))
+s_sc <- summary(pca_human_sc)
+pca_pr_z <- round(100*s_sc$importance[2, ], digits = 2)
+pca_pr_z
+```
+
+```{r}
+pc_lab <- paste0(names(pca_pr_z), " (", pca_pr_z, "%)")
+
+biplot(pca_human_sc, cex = c(0.4, 0.6), col = c("grey40", "deeppink2"),xlab=pc_lab[1], 
+       ylab=pc_lab[2])
+```
+
+#### Here I can see we have 2 principle components that make up roughly 70% of the variation.  For PC1 we can see that it correlates negatively with Edu.Exp, Life.Exp and Edu2.F while also correlating positively with Mat.Mor and Ado.Birth.  This makes sense that these variables would cluster based on our correlation plots we did first.
+
+#### PC2 seems to positively correlate with Labo.FM and Parli.F.
+
+### Task 5 - Tea Time
+
+```{r}
+tea <- read.csv("https://raw.githubusercontent.com/KimmoVehkalahti/Helsinki-Open-Data-Science/master/datasets/tea.csv", stringsAsFactors = TRUE)
+
+str(tea)
+view(tea)
+```
+
+```{r}
+keep_columns <- c("sex", "feminine", "effect.on.health", "healthy", "relaxing", "sugar", "exciting", "slimming", "sophisticated", "frequency")
+
+tea_time <- select(tea, all_of(keep_columns))
+
+pivot_longer(tea_time, cols = everything()) %>% 
+  ggplot(aes(value)) + geom_bar() + facet_wrap("name", scales = "free")
+
+```
+
+$~$
+
+#### Just looking at some variables I found interesting.  There are more females who drink tea and find it relaxing and healthy.
+
+```{r}
+# multiple correspondence analysis
+mca <- MCA(tea_time, graph = TRUE)
+
+# summary of the model
+summary.MCA(mca)
+
+```
+#### I have 2 dimensions that explain about 27% of the variation, Dim1 seems to correleate with sex/feminine and Dim2 seems to sort around the perceived health aspects of tea drinking.
+
+
+```{r}
+# visualize MCA
+plot(mca, invisible=c("ind"), graph.type = "classic", habillage = "quali", palette = c("blue", "turquoise", "red"))
+```
+
+$~$
+
+#### Here I can see that Dim1 correlates positively with not feminine and male, while Dim2 correlates with effect on health and not healthy?  So I suppose that there needs to be some additional pruning or combining of variables.  The inferences I made from this analysis would be weak.
+
+
+
