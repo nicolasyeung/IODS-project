@@ -101,6 +101,6 @@ ggplot(RATSL, aes(x = Time, y = Weight, linetype = ID)) +
 
 getwd()
 setwd("C:/Users/nicol/Downloads/PHD_302/IODS-project")
-write_csv(BPRSL, file="ratsl.csv")
-write_csv(BPRS, file="rats.csv")
+write_csv(RATSL, file="ratsl.csv")
+write_csv(RATS, file="rats.csv")
 
