@@ -1,0 +1,291 @@
+# Assignment 6 Analysis of Longitudinal Data
+
+#### Preparing the environment
+
+```{r}
+library(tidyverse)
+library(dplyr)
+library(corrplot)
+library(ggplot2)
+library(lme4)
+library(cowplot)
+```
+
+
+## Part 1: RATS data
+
+#### Loadin the data
+
+```{r}
+RATS <- read.csv("C:/Users/nicol/Downloads/PHD_302/IODS-project/rats.csv")
+
+RATSL <- read.csv("C:/Users/nicol/Downloads/PHD_302/IODS-project/ratsl.csv")
+
+glimpse(RATSL)
+```
+
+#### Making Group and ID factors
+```{r}
+RATSL$ID <- as.factor(RATSL$ID)
+RATSL$Group <- as.factor(RATSL$Group)
+
+glimpse(RATSL)
+```
+
+#### Plotting the data
+
+```{r}
+ggplot(RATSL, aes(x = Time, y = Weight, linetype = ID)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:10, times=4)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  theme(legend.position = "none") + 
+  scale_y_continuous(limits = c(min(RATSL$Weight), max(RATSL$Weight)))
+```
+
+
+
+##### Here I can see that group 1 started and a lower average weight than the other groups.  Also it seems that group 1 gained weight less over time that the other two groups.
+
+#### Standardizing the weight
+
+```{r}
+RATSLS <- RATSL %>%
+  group_by(Time) %>%
+  mutate(stdweight = (Weight-mean(Weight))/sd(Weight)) %>%
+  ungroup()
+```
+
+#### Plotting the standardized data
+```{r}
+ggplot(RATSLS, aes(x = Time, y = stdweight, linetype = ID)) +
+  geom_line() +
+  scale_linetype_manual(values = rep(1:16, times=6)) +
+  facet_grid(. ~ Group, labeller = label_both) +
+  scale_y_continuous(name = "standardized weight")
+```
+##### Here you can more clearly see what I saw in the non-standardized data, as well as an outlier in group 2
+
+#### Summarize the Rat Weights by mean and standard error
+
+```{r}
+RATSLSsum <- RATSLS %>%
+  group_by(Group, Time) %>%
+  summarise(mean = mean(Weight), n = n(), se = sd(Weight)/sqrt(n)) %>%
+  ungroup()
+```
+#### Ploting the summarized data
+
+```{r}
+ggplot(RATSLSsum, aes(x = Time, y = mean)) +
+  geom_line(aes(color = Group)) +
+  geom_ribbon(aes(ymin = mean - se, ymax = mean + se, fill = Group), alpha = 0.2) +
+  scale_y_continuous(name = "Weight")
+```
+
+#### Outlier Hunting
+
+
+```{r}
+# Create a summary data by diet group and rat ID with mean as the summary variable (ignoring baseline Time = 1)
+RATSL8S <- RATSL %>%
+  filter(Time > 1) %>%
+  group_by(Group, ID) %>%
+  summarise(mean=mean(Weight) ) %>%
+  ungroup()
+
+# Draw a boxplot of the mean versus treatment
+ggplot(RATSL8S, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(weight)")
+```
+```{r}
+head(RATSL8S, n=16)
+
+```
+
+
+##### from here  I can see that we have one outlier above 500 and one below 250 and one from group 3 that is 495.2
+
+```{r}
+#removing outliers
+RATSL8S1 <- RATSL8S %>%
+  filter(mean<550 & mean>250 & mean!=495.2)
+
+ggplot(RATSL8S1, aes(x = Group, y = mean)) +
+  geom_boxplot() +
+  stat_summary(fun = "mean", geom = "point", shape=23, size=4, fill = "white") +
+  scale_y_continuous(name = "mean(weight)")
+```
+
+### T tests
+
+#### exclude group 1
+
+```{r}
+t.test(mean ~ Group, data = filter(RATSL8S1,Group!=1), var.equal = TRUE)
+```
+
+
+#### exclude group 2
+```{r}
+t.test(mean ~ Group, data = filter(RATSL8S1,Group!=2), var.equal = TRUE)
+```
+
+
+#### exclude group 3
+
+```{r}
+t.test(mean ~ Group, data = filter(RATSL8S1,Group!=3), var.equal = TRUE)
+```
+
+
+##### all the T test comparisons reject the null hypothesis, the difference between each pair of groups is not zero.  There is a statistically significant difference between each group.
+
+### Analysis of Varianace ANOVA
+
+#### Create a baseline
+
+```{r}
+RATSL8S2 <- RATSL8S %>%
+  mutate(baseline = RATS$WD1)
+```
+
+#### Filter out the outliers like before
+
+```{r}
+RATSL8S2 <- RATSL8S2 %>%
+  filter(mean<550 & mean>250 & mean!=495.2)
+```
+
+#### Fit a model and perform ANOVA
+
+```{r}
+fit <- lm(mean ~ baseline + Group, data = RATSL8S2)
+
+anova(fit)
+```
+##### Conclusion: Both baseline weight and group had an effect on weight.  The heavier the rat was at the beginning, the more likely it was to be heavier at the end, which makes sense, if you get more calorie dense food at a higher weight it will go up and be even higher.  The group also effected the weight increase.
+
+
+## Part 2: BPRS data
+
+#### Load the data
+```{r}
+BPRS <- read.table("https://raw.githubusercontent.com/KimmoVehkalahti/MABS/master/Examples/data/BPRS.txt", sep =" ", header = T)
+
+BPRS$treatment <- factor(BPRS$treatment)
+BPRS$subject <- factor(BPRS$subject)
+
+BPRSL <-  pivot_longer(BPRS, cols = -c(treatment, subject),
+                       names_to = "weeks", values_to = "bprs") %>%
+  arrange(weeks) 
+
+BPRSL <-  BPRSL %>% 
+  mutate(week = as.integer(substr(weeks,5,5)))
+
+str(BPRSL)
+```
+
+##### Good now I have my data in long form with factorized variables
+
+#### Plot first ask questions later
+
+```{r}
+ggplot(BPRSL, aes(x = week, y = bprs, group = subject)) +
+  geom_line(aes(col = subject), alpha = 0.5) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_x_continuous(name = "Week") + 
+  scale_y_continuous(name = "Score") +
+  theme(legend.position = "none")
+```
+
+##### I can't really see a pattern or correlation here so far.
+
+### Regression Modelling
+
+#### Linear Model
+
+```{r}
+BPRS_lm <- lm(bprs ~ week + treatment, data = BPRSL)
+summary(BPRS_lm)
+```
+##### Here it seems that week has a higher correlation that treatment in terms of bprs scores, they seem to decline by 2 points a week.
+
+#### Random Intercept Model
+
+```{r}
+BPRS_ref <- lmer(bprs ~ week + treatment + (1 | subject), data = BPRSL, REML = FALSE)
+
+summary(BPRS_ref)
+```
+
+#### Random slope and random intercept model
+
+```{r}
+BPRS_ref2 <- lmer(bprs ~ week + treatment + (week | subject), data = BPRSL, REML = FALSE)
+
+summary(BPRS_ref2)
+```
+#### ANOVA of the two models
+
+```{r}
+anova(BPRS_ref2, BPRS_ref)
+```
+##### Comparing between the two models we see that the second performs better
+
+
+#### Adding Interaction 
+
+```{r}
+BPRS_ref3 <- lmer(bprs ~ week * treatment + (week | subject), data = BPRSL, REML = FALSE)
+
+summary(BPRS_ref3)
+```
+#### Anova of RSRI and RSRI+i
+
+```{r}
+anova(BPRS_ref3, BPRS_ref2)
+```
+
+##### Not quite enough better
+
+#### Plotting Fitted Scores
+
+```{r}
+Fitted <- fitted(BPRS_ref3)
+BPRSL$Fitted <- Fitted
+
+ggplot(BPRSL, aes(x = week, y = Fitted, group = subject)) +
+  geom_line(aes(col = subject)) +
+  facet_grid(. ~ treatment, labeller = label_both) +
+  scale_x_continuous(name = "Week") +
+  scale_y_continuous(name = "Fitted BPRS") +
+  theme(legend.position = "none")
+```
+#### Observed vs Fitted
+
+```{r}
+Fitted_plot<- ggplot(BPRSL, aes(x = week, y = Fitted, group = interaction(treatment, subject))) +
+  geom_line(aes(linetype = treatment, colour=treatment)) +
+  scale_x_continuous(name = "Time (weeks)", breaks = seq(0, 60, 20)) +
+  scale_y_continuous(name = "Fitted BPRS") +
+  theme(legend.position = "top")  +
+  ggtitle("Fitted")
+
+# Plot the RATSL data
+Observed_plot <- ggplot(BPRSL, aes(x = week, y = bprs, group = interaction(treatment, subject)))+
+  geom_line(aes(linetype = treatment, colour=treatment))+
+  scale_x_continuous(name = "Time (weeks)", breaks = seq(0, 60, 20))+
+  scale_y_continuous(name = "BPRS")+
+  theme(legend.position = "top")+
+  ggtitle("Observed")
+
+plot_grid(Observed_plot, Fitted_plot, labels = "AUTO") 
+```
+#### Making sense out of madness, the general trend is for the BPRS scores to go down, regardless of treatment, which was difficult to see from the oberserved data.
+
+
+
+##Complete, Happy Holidays:)
